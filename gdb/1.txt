@@ -1,0 +1,114 @@
+# source /mnt/disk2/workspace/coding/my_hik_client/gdb/1.txt
+
+set $LOG_PATH = "/mnt/disk2/workspace/coding/build-hik_client-Desktop-Debug"
+set $LOG_FILE = "gdb_log.txt"
+set $DUMP_FILE = "dump.bin"
+set $TMP_FILE = "tmp"
+eval "set $LOG_FILE_PATH = \"%s/%s\"", $LOG_PATH, $LOG_FILE
+eval "set $DUMP_FILE_PATH = \"%s/%s\"", $LOG_PATH, $DUMP_FILE
+eval "set $TMP_FILE_PATH = \"%s/%s\"", $LOG_PATH, $TMP_FILE
+
+define create_log_file
+    eval "shell echo started > %s", $LOG_FILE_PATH
+end
+
+define log_to_file
+    eval "shell echo %s >> %s", $PRINT_VALUE, $LOG_FILE_PATH
+end
+
+define xxd
+    eval "dump binary memory %s $arg0 $arg0+$arg1", $DUMP_FILE_PATH
+    eval "shell xxd -g 1 %s > %s", $DUMP_FILE_PATH, $TMP_FILE_PATH
+    eval "set $PRINT_VALUE = \"Memory dump %p, %s :\"", $arg0, $arg2
+    log_to_file
+    eval "shell cat %s >> %s", $TMP_FILE_PATH, $LOG_FILE_PATH
+end
+
+# NET_DVR_Login
+tb *0x4028ea thread 1
+commands
+    create_log_file
+
+    # HPR_GetTimeTick result
+    b *0x7ffff6f947e5 thread 1
+    commands
+        eval "set $PRINT_VALUE = \"gettimetick result: %i - %#08x\"", $eax, $eax
+        log_to_file
+        cont
+    end
+
+    # after RSA_eay_private_decrypt call
+    tb *0x7ffff678d05a thread 1
+    commands
+        tb *0x7ffff6fa1652 thread 1
+        commands
+            tb *0x7ffff6fa1651 thread 1
+            commands
+                xxd 0x7fffffffc9d0 268 "recv login packet2:"
+                cont
+            end
+
+            xxd 0x7fffffffb3e0 32 "recv login packet1:"
+            cont
+        end
+
+#        printf "-------------------------- DECRYPTED KEY: is %s\n", 0x7fffffffcf70
+        eval "set $PRINT_VALUE = \"Decrypted key: %s\"", 0x7fffffffcf70
+        log_to_file
+        xxd 0x7fffffffcf70 48 "decrypted key mem"
+        cont
+    end
+    cont
+end
+
+# NET_DVR_SetupAlarmChan
+tb *0x4027d3 thread 1
+commands
+    # after ENCRYPT_CheckSumEncrypt call
+    tb *0x7ffff680b0c6 thread 1
+    commands
+        xxd 0x7fffffff8940 48 "ENCRYPT_CheckSumEncrypt to_enc"
+        xxd 0x7fffffffcb94 12 "ENCRYPT_CheckSumEncrypt key1"
+
+        #  call   0x7ffff680b06a <ENCRYPT_LevelFourEncrypt>
+        tb *0x7ffff680b240 thread 1
+        commands
+            xxd 0x7fffffff88d0 16 "ENCRYPT_LevelFourEncrypt to_enc"
+            cont
+        end
+
+        # after ENCRYPT_LevelFourEncrypt call
+        tb *0x7ffff680b245 thread 1
+        commands
+            xxd 0x7fffffff88f0 16 "ENCRYPT_LevelFourEncrypt result"
+            cont
+        end
+
+        # add base1 + enc in ENCRYPT_LevelFourEncrypt call
+        tb *0x7ffff680b2ef thread 1
+        commands
+            xxd 0x7fffffff896c 4 "ENCRYPT_LevelFourEncrypt enc"
+            xxd 0x7fffffff8960 4 "ENCRYPT_LevelFourEncrypt base1"
+
+            cont
+        end
+
+        # result in ENCRYPT_CheckSumEncrypt call
+        tb *0x7ffff680b301 thread 1
+        commands
+            tcatch syscall sendto
+            commands
+                xxd 0x7fffffff89c0 64 "send alarm packet dump:"
+                cont
+            end
+
+            cont
+        end
+
+        cont
+    end
+    cont
+end
+
+#set disable-randomization on
+#run

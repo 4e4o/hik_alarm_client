@@ -1,0 +1,34 @@
+# source /mnt/disk2/workspace/coding/my_hik_client/gdb/2.txt
+
+tb *0x403c50 thread 1
+commands
+#   call   0x7ffff680b06a <ENCRYPT_LevelFourEncrypt>
+    tb *0x7ffff680b240 thread 1
+    commands
+        #   before call   0x7ffff680ad3a <_Z19Inter_Aes128EncryptPhiiS_iPiS_j>
+        #tb *0x7ffff680b0bf thread 1
+        #commands
+        #    cont
+        #end
+
+        tb *0x7ffff680b09e thread 1
+        commands
+#            cont
+        end
+
+        #   before call   0x7ffff669c208 <memset@plt> (00007fffffffdf20, 0, 256)
+        #tb *0x7ffff680ad86 thread 1
+        #commands
+        #    cont
+        #end
+
+        tb *0x7ffff680f15c thread 1
+        commands
+        #    cont
+        end
+
+        cont
+    end
+
+    cont
+end
