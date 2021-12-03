@@ -1,34 +1,25 @@
-#include <Alarmer.hpp>
+#include <AlarmManager.hpp>
 
-#include <stdexcept>
 #include <iostream>
 
-void setArgs(int count, char **argv, AlarmerArgs& args) {
-    if (count != 5)
-        throw std::runtime_error("Args error: ip port login pass");
+int main(int argc, char **argv) {
+    std::unique_ptr<AlarmManager> am(new AlarmManager(argc, argv));
+    using TMD = AlarmManager::TMotion;
 
-    args.ip = std::string(argv[1]);
-    args.port = std::stoi(argv[2]);
-    args.login = std::string(argv[3]);
-    args.pass = std::string(argv[4]);
-}
-
-int main(int count, char **argv) {
-    AlarmerArgs args;
-    setArgs(count, argv, args);
-    Alarmer a(args);
-
-    using TMD = AlarmProtocol::TMotion;
-
-    a.run([](const TMD& md, const size_t& size) {
-        std::cout << "md on channels: ";
+    am->setMotionCallback([] (AlarmClient* client, const TMD& md, const size_t& size) {
+        const std::string server = client->config()->getComment().empty() ?
+                    client->config()->getIp() : client->config()->getComment();
+        std::cout << "MD on " << server << ", channels: ";
 
         for (size_t i = 0 ; i < size ; i++) {
-            std::cout << (int)md[i] << ", ";
+            const std::string channel = md[i]->getComment().empty() ?
+                        std::to_string(md[i]->getId()) : md[i]->getComment();
+
+            std::cout << channel << ", ";
         }
 
         std::cout << std::endl;
     });
 
-    return 0;
+    return am->run();
 }
