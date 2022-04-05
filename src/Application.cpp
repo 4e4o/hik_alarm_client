@@ -15,16 +15,16 @@ Application::~Application() {
 void Application::onNewClient(AlarmClient* client) {
     using TMD = AlarmClient::TMotion;
 
-    client->onMotion.connect([this, client](const TMD& md, const size_t& size) {
+    client->onMotion.connect([client](const TMD& md, const size_t& size) {
         const std::string server = client->config()->getComment().empty() ?
                     client->config()->getIp() : client->config()->getComment();
-        log(boost::format("MD on %1%, channels: ") % server);
+        AAP_LOG(fmt("MD on %1%, channels: ") % server);
 
         for (size_t i = 0 ; i < size ; i++) {
             const std::string channel = md[i]->getComment().empty() ?
                         std::to_string(md[i]->getId()) : md[i]->getComment();
 
-            log(boost::format("%1%, ") % channel);
+            AAP_LOG(fmt("%1%, ") % channel);
         }
     });
 }
